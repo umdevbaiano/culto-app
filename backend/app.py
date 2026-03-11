@@ -50,6 +50,29 @@ def rate_limit(max_calls, window_secs):
         return wrapper
     return decorator
 
+# ── Basic Auth ──────────────────────────────────────────────────────────────────────
+_ADMIN_USER = os.getenv('ADMIN_USER', 'admin')
+_ADMIN_PASS = os.getenv('ADMIN_PASS', 'culto123')
+
+def _check_auth(auth):
+    """Verifica credenciais do Basic Auth."""
+    return auth and auth.username == _ADMIN_USER and auth.password == _ADMIN_PASS
+
+def requires_auth(f):
+    """Decorator: exige Basic Auth. Retorna 401 e abre janela do navegador."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        auth = request.authorization
+        if not _check_auth(auth):
+            from flask import Response
+            return Response(
+                'Acesso negado. Identifique-se.',
+                401,
+                {'WWW-Authenticate': 'Basic realm="Painel do Culto"'}
+            )
+        return f(*args, **kwargs)
+    return wrapper
+
 # ── CORS manual (sem flask-cors) ──────────────────────────────────────────────
 @app.after_request
 def add_cors(response):
@@ -71,12 +94,29 @@ def index():
     return send_from_directory(FRONTEND, 'form.html')
 
 @app.route('/admin')
+@requires_auth
 def admin():
     return send_from_directory(FRONTEND, 'admin.html')
 
 @app.route('/assets/<path:filename>')
 def assets(filename):
     return send_from_directory(os.path.join(FRONTEND, 'assets'), filename)
+
+@app.route('/style.css')
+def serve_css():
+    return send_from_directory(FRONTEND, 'style.css')
+
+@app.route('/script.js')
+def serve_js():
+    return send_from_directory(FRONTEND, 'script.js')
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory(FRONTEND, 'manifest.json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory(FRONTEND, 'sw.js')
 
 # ── API: Cadastro ─────────────────────────────────────────────────────────────
 @app.route('/api/cadastro', methods=['POST'])

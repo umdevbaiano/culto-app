@@ -1,5 +1,8 @@
 import threading
 import time
+import os
+import shutil
+import glob
 from datetime import datetime, date
 
 # Importações locais
@@ -9,6 +12,30 @@ import whatsapp as wa
 _lock = threading.Lock()
 _ultimo_pre = None
 _ultimo_fim = None
+_ultimo_backup = None  # data do último backup realizado
+
+# ── Backup do Banco de Dados ───────────────────────────────────────────────────
+_DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'culto.db')
+_BACKUP_DIR = os.path.join(os.path.dirname(__file__), '..', 'backups')
+_BACKUP_RETENCAO_DIAS = 7
+
+def _fazer_backup_db():
+    """Copia o culto.db para a pasta backups/ com timestamp. Remove backups antigos."""
+    try:
+        os.makedirs(_BACKUP_DIR, exist_ok=True)
+        hoje_str = date.today().isoformat()
+        destino = os.path.join(_BACKUP_DIR, f'banco_{hoje_str}.db')
+        shutil.copy2(_DB_PATH, destino)
+        print(f'[BACKUP] ✅ Banco copiado para {destino}')
+
+        # Remove backups mais antigos que a retenção configurada
+        todos = sorted(glob.glob(os.path.join(_BACKUP_DIR, 'banco_*.db')))
+        while len(todos) > _BACKUP_RETENCAO_DIAS:
+            antigo = todos.pop(0)
+            os.remove(antigo)
+            print(f'[BACKUP] 🗑️ Backup antigo removido: {antigo}')
+    except Exception as e:
+        print(f'[BACKUP] ❌ Erro ao fazer backup: {e}')
 
 def _hoje():
     return date.today().isoformat()
@@ -71,10 +98,10 @@ def disparar_fim_culto():
         wa.enviar_mensagem(m['telefone'], msg)
         time.sleep(1)
 
-# ── Loop principal ────────────────────────────────────────────────────────────
+
 
 def _loop():
-    global _ultimo_pre, _ultimo_fim
+    global _ultimo_pre, _ultimo_fim, _ultimo_backup
     print('[SCHED] 🚀 Agendador iniciado')
 
     while True:
@@ -83,11 +110,18 @@ def _loop():
             hora = _hora_atual()
             dia = _dia_semana_atual()
             dias_ok = _dias_habilitados(config)
+            hoje = _hoje()
+
+            # ── Backup noturno (às 03:00) ──
+            if hora == '03:00' and _ultimo_backup != hoje:
+                with _lock:
+                    if _ultimo_backup != hoje:
+                        _ultimo_backup = hoje
+                        threading.Thread(target=_fazer_backup_db, daemon=True).start()
 
             if dia in dias_ok:
                 horario_pre = config.get('horario_pre_culto', '19:00')
                 horario_fim = config.get('horario_fim_culto', '21:00')
-                hoje = _hoje()
 
                 # Pré-culto
                 if hora == horario_pre and _ultimo_pre != hoje:

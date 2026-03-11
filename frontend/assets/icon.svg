@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0f3460" rx="100"/>
+  <!-- Simbolo Igreja/Centro/Comunidade -> Cruz/Casa Estilizada -->
+  <path fill="#ffffff" d="M256,90 L256,160 L180,160 L180,210 L256,210 L256,410 L306,410 L306,210 L382,210 L382,160 L306,160 L306,90 Z" />
+</svg>
