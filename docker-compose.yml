@@ -1,34 +1,14 @@
 services:
-  # ── PostgreSQL para Evolution API ─────────────────────
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=evolution
-      - POSTGRES_PASSWORD=evolution_password
-      - POSTGRES_DB=evolution
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    restart: unless-stopped
-
   # ── Evolution API (WhatsApp) ──────────────────────────
   evolution:
-    image: atendai/evolution-api:v2.2.3
+    image: atendai/evolution-api:v1.8.2
     ports:
       - "8080:8080"
     environment:
       - AUTHENTICATION_API_KEY=VCzyK87Ue8EQq3tCSbdhtXUlTfJuQ_PexZMvsnY5SbQ
-      - DATABASE_ENABLED=true
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution_password@postgres:5432/evolution
-      - DATABASE_SAVE_DATA_INSTANCE=true
-      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
-      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_ENABLED=false
       - DATABASE_SAVE_DATA_CONTACTS=true
       - DATABASE_SAVE_DATA_CHATS=true
-    depends_on:
-      - postgres
     volumes:
       - evolution-data:/evolution/instances
     restart: unless-stopped
@@ -47,5 +27,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  postgres-data:
   evolution-data:
   app-data:
+
