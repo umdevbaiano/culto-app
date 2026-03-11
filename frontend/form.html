@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro — Culto</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .cross {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 22px;
+      color: #1a1a2e;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e8e8e8;
+      border-radius: 10px;
+      font-size: 16px;
+      color: #1a1a2e;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #0f3460;
+    }
+
+    .optional {
+      font-weight: 400;
+      color: #aaa;
+      font-size: 11px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    button {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #0f3460, #1a6b5a);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      margin-top: 8px;
+    }
+
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .msg {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      display: none;
+    }
+
+    .msg.success {
+      background: #eafaf1;
+      color: #1a6b3a;
+      border: 1px solid #a9dfbf;
+    }
+
+    .msg.error {
+      background: #fdf2f2;
+      color: #c0392b;
+      border: 1px solid #f1948a;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 24px;
+      color: #bbb;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div class="cross">✝️</div>
+      <h1>Bem-vindo(a)!</h1>
+      <p class="subtitle">Cadastre-se para receber avisos dos nossos cultos pelo WhatsApp</p>
+    </div>
+
+    <div class="form-group">
+      <label>Nome completo</label>
+      <input type="text" id="nome" placeholder="Seu nome" autocomplete="name">
+    </div>
+
+    <div class="form-group">
+      <label>WhatsApp <span class="optional">com DDD</span></label>
+      <input type="tel" id="telefone" placeholder="(73) 99999-9999" autocomplete="tel">
+    </div>
+
+    <div class="form-group">
+      <label>Data de nascimento <span class="optional">opcional</span></label>
+      <input type="date" id="nascimento">
+    </div>
+
+    <button id="btn" onclick="cadastrar()">Cadastrar 🙏</button>
+
+    <div class="msg" id="msg"></div>
+
+    <div class="footer">Seus dados são usados apenas para comunicações da igreja.</div>
+  </div>
+
+  <script>
+    async function cadastrar() {
+      const nome = document.getElementById('nome').value.trim();
+      const telefone = document.getElementById('telefone').value.trim();
+      const nascimento = document.getElementById('nascimento').value;
+      const btn = document.getElementById('btn');
+      const msgEl = document.getElementById('msg');
+
+      if (!nome || !telefone) {
+        showMsg('Por favor, preencha nome e WhatsApp.', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Cadastrando...';
+
+      try {
+        const resp = await fetch('/api/cadastro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome, telefone, nascimento })
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+          showMsg('✅ Cadastro realizado! Em breve você receberá uma mensagem no WhatsApp. 🙏', 'success');
+          document.getElementById('nome').value = '';
+          document.getElementById('telefone').value = '';
+          document.getElementById('nascimento').value = '';
+        } else {
+          showMsg('⚠️ ' + data.msg, 'error');
+        }
+      } catch (e) {
+        showMsg('Erro de conexão. Tente novamente.', 'error');
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Cadastrar 🙏';
+    }
+
+    function showMsg(texto, tipo) {
+      const el = document.getElementById('msg');
+      el.textContent = texto;
+      el.className = 'msg ' + tipo;
+      el.style.display = 'block';
+    }
+
+    // Enter para enviar
+    document.addEventListener('keypress', e => {
+      if (e.key === 'Enter') cadastrar();
+    });
+  </script>
+</body>
+</html>

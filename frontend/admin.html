@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Admin — Culto</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #0f3460;
+      --green: #1a6b3a;
+      --red: #c0392b;
+      --gray: #888;
+      --light: #f5f7fa;
+      --border: #e8e8e8;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--light);
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #1a1a2e, #0f3460);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 { font-size: 18px; font-weight: 700; }
+    header .data { font-size: 13px; opacity: 0.7; margin-top: 2px; }
+
+    .refresh-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: white;
+      border-bottom: 2px solid var(--border);
+      padding: 0 16px;
+    }
+
+    .tab {
+      padding: 14px 18px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray);
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      color: var(--blue);
+      border-bottom-color: var(--blue);
+    }
+
+    /* ── Content ── */
+    .content { padding: 20px 16px; max-width: 700px; margin: 0 auto; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Cards de stats ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .stat .num { font-size: 32px; font-weight: 800; }
+    .stat .lbl { font-size: 12px; color: var(--gray); margin-top: 4px; }
+    .stat.verde .num { color: var(--green); }
+    .stat.vermelho .num { color: var(--red); }
+    .stat.cinza .num { color: var(--gray); }
+
+    /* ── Botões de disparo ── */
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-success { background: var(--green); color: white; }
+    .btn-danger  { background: var(--red); color: white; }
+    .btn-outline {
+      background: white;
+      color: var(--blue);
+      border: 2px solid var(--blue);
+    }
+
+    /* ── Listas de membros ── */
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray);
+      margin: 20px 0 10px;
+    }
+
+    .member-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .member-item {
+      background: white;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .member-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot-verde   { background: var(--green); }
+    .dot-vermelho{ background: var(--red); }
+    .dot-cinza   { background: #ccc; }
+
+    .member-nome { font-weight: 600; font-size: 14px; }
+    .member-tel  { font-size: 12px; color: var(--gray); }
+
+    .empty { text-align: center; color: var(--gray); font-size: 14px; padding: 24px; }
+
+    /* ── Config ── */
+    .config-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .config-card h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--blue);
+    }
+
+    .form-group { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    input[type=time], input[type=text], input[type=tel], input[type=date], textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, textarea:focus { border-color: var(--blue); }
+
+    textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+
+    .dias-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+    }
+
+    .dia-btn {
+      aspect-ratio: 1;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--gray);
+      transition: all 0.2s;
+    }
+
+    .dia-btn.ativo {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: white;
+    }
+
+    .save-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--blue);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a2e;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 1000;
+      display: none;
+      white-space: nowrap;
+    }
+
+    /* ── Membros tab ── */
+    .add-member-form {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+
+    .add-member-form h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 16px;
+    }
+
+    .inline-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* ── Histórico ── */
+    .filtro-datas {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .filtro-datas .form-group { margin-bottom: 0; flex: 1; min-width: 120px; }
+    .filtro-datas .btn { flex: 0 0 auto; height: 40px; }
+
+    .dia-historico {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .dia-historico-header {
+      padding: 12px 16px;
+      background: var(--light);
+      font-weight: 700;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .dia-historico-header .badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+    }
+
+    .badge-verde { background: #eafaf1; color: var(--green); }
+    .badge-vermelho { background: #fdf2f2; color: var(--red); }
+
+    .dia-historico .member-list { padding: 8px; gap: 4px; }
+
+    /* ── Estatísticas ── */
+    .stats-big {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .stat-big {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      border: 1px solid var(--border);
+    }
+
+    .stat-big .num { font-size: 36px; font-weight: 800; color: var(--blue); }
+    .stat-big .lbl { font-size: 12px; color: var(--gray); margin-top: 4px; }
+
+    .ranking-item {
+      background: white;
+      border-radius: 10px;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .ranking-pos {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--blue);
+      min-width: 28px;
+      text-align: center;
+    }
+
+    .ranking-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .ranking-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), var(--green));
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .ranking-info { flex: 1; min-width: 0; }
+    .ranking-info .member-nome { margin-bottom: 4px; }
+    .ranking-count { font-size: 13px; color: var(--gray); white-space: nowrap; }
+
+    .chart-container {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .chart-container h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 16px;
+    }
+
+    canvas#chart { width: 100%; height: 200px; }
+
+    @media (max-width: 480px) {
+      .inline-form { grid-template-columns: 1fr; }
+      .btn-row { grid-template-columns: 1fr; }
+      .dias-grid { grid-template-columns: repeat(7, 1fr); }
+      .stats-big { grid-template-columns: 1fr; }
+      .filtro-datas { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🙏 Painel do Culto</h1>
+    <div class="data" id="header-data">—</div>
+  </div>
+  <button class="refresh-btn" onclick="carregarPainel()">↺ Atualizar</button>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="trocarTab('painel')">Culto de Hoje</div>
+  <div class="tab" onclick="trocarTab('membros')">Membros</div>
+  <div class="tab" onclick="trocarTab('historico')">Histórico</div>
+  <div class="tab" onclick="trocarTab('stats')">Estatísticas</div>
+  <div class="tab" onclick="trocarTab('config')">Configurações</div>
+</div>
+
+<div class="content">
+
+  <!-- ── TAB: PAINEL ── -->
+  <div class="tab-panel active" id="tab-painel">
+
+    <div class="stats">
+      <div class="stat verde">
+        <div class="num" id="count-sim">—</div>
+        <div class="lbl">Confirmados</div>
+      </div>
+      <div class="stat vermelho">
+        <div class="num" id="count-nao">—</div>
+        <div class="lbl">Não vão</div>
+      </div>
+      <div class="stat cinza">
+        <div class="num" id="count-esp">—</div>
+        <div class="lbl">Aguardando</div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="disparar('pre')">📨 Disparar Pré-culto</button>
+      <button class="btn btn-success" onclick="disparar('fim')">🙏 Disparar Fim do Culto</button>
+    </div>
+
+    <div id="listas-painel"></div>
+  </div>
+
+  <!-- ── TAB: MEMBROS ── -->
+  <div class="tab-panel" id="tab-membros">
+    <div class="add-member-form">
+      <h3>➕ Adicionar membro manualmente</h3>
+      <div class="inline-form">
+        <div class="form-group">
+          <label>Nome</label>
+          <input type="text" id="m-nome" placeholder="Nome completo">
+        </div>
+        <div class="form-group">
+          <label>WhatsApp</label>
+          <input type="tel" id="m-tel" placeholder="(73) 99999-0000">
+        </div>
+        <div class="form-group">
+          <label>Nascimento (opcional)</label>
+          <input type="date" id="m-nasc">
+        </div>
+        <div class="form-group" style="display:flex; align-items:flex-end;">
+          <button class="btn btn-primary" style="width:100%" onclick="addMembro()">Adicionar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Todos os membros</div>
+    <div id="lista-membros" class="member-list"></div>
+  </div>
+
+  <!-- ── TAB: HISTÓRICO ── -->
+  <div class="tab-panel" id="tab-historico">
+    <div class="filtro-datas">
+      <div class="form-group">
+        <label>De</label>
+        <input type="date" id="hist-inicio">
+      </div>
+      <div class="form-group">
+        <label>Até</label>
+        <input type="date" id="hist-fim">
+      </div>
+      <button class="btn btn-primary" onclick="carregarHistorico()" style="height:42px">🔍 Buscar</button>
+    </div>
+    <div id="lista-historico"></div>
+  </div>
+
+  <!-- ── TAB: ESTATÍSTICAS ── -->
+  <div class="tab-panel" id="tab-stats">
+    <div class="stats-big">
+      <div class="stat-big">
+        <div class="num" id="st-cultos">—</div>
+        <div class="lbl">Cultos Realizados</div>
+      </div>
+      <div class="stat-big">
+        <div class="num" id="st-membros">—</div>
+        <div class="lbl">Membros Ativos</div>
+      </div>
+      <div class="stat-big">
+        <div class="num" id="st-media">—</div>
+        <div class="lbl">Média por Culto</div>
+      </div>
+    </div>
+
+    <div class="chart-container">
+      <h3>📈 Presença ao Longo do Tempo</h3>
+      <canvas id="chart" height="200"></canvas>
+    </div>
+
+    <div class="section-title">🏆 Ranking de Frequência</div>
+    <div id="lista-ranking"></div>
+  </div>
+
+  <!-- ── TAB: CONFIG ── -->
+  <div class="tab-panel" id="tab-config">
+
+    <div class="config-card">
+      <h3>⏰ Horários e Dias</h3>
+
+      <div class="inline-form">
+        <div class="form-group">
+          <label>Horário pré-culto</label>
+          <input type="time" id="cfg-pre">
+        </div>
+        <div class="form-group">
+          <label>Horário fim do culto</label>
+          <input type="time" id="cfg-fim">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Dias do culto</label>
+        <div class="dias-grid">
+          <button class="dia-btn" data-dia="0" onclick="toggleDia(this)">Seg</button>
+          <button class="dia-btn" data-dia="1" onclick="toggleDia(this)">Ter</button>
+          <button class="dia-btn" data-dia="2" onclick="toggleDia(this)">Qua</button>
+          <button class="dia-btn" data-dia="3" onclick="toggleDia(this)">Qui</button>
+          <button class="dia-btn" data-dia="4" onclick="toggleDia(this)">Sex</button>
+          <button class="dia-btn" data-dia="5" onclick="toggleDia(this)">Sáb</button>
+          <button class="dia-btn" data-dia="6" onclick="toggleDia(this)">Dom</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-card">
+      <h3>💬 Mensagens</h3>
+
+      <div class="form-group">
+        <label>Pré-culto <small style="color:#aaa">{nome}</small></label>
+        <textarea id="cfg-msg-pre" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Boas-vindas (confirmou) <small style="color:#aaa">{nome}</small></label>
+        <textarea id="cfg-msg-bv" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Ausente pré-culto <small style="color:#aaa">{nome} {youtube}</small></label>
+        <textarea id="cfg-msg-aus-pre" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Até amanhã (confirmados) <small style="color:#aaa">{nome}</small></label>
+        <textarea id="cfg-msg-ate" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Ausente fim do culto <small style="color:#aaa">{nome}</small></label>
+        <textarea id="cfg-msg-aus-fim" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Link YouTube (canal fixo)</label>
+        <input type="text" id="cfg-yt" placeholder="https://youtube.com/@seucanal">
+      </div>
+    </div>
+
+    <button class="save-btn" onclick="salvarConfig()">💾 Salvar Configurações</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function trocarTab(nome) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const nomes = ['painel','membros','historico','stats','config'];
+    t.classList.toggle('active', nomes[i] === nome);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + nome).classList.add('active');
+
+  if (nome === 'painel') carregarPainel();
+  if (nome === 'membros') carregarMembros();
+  if (nome === 'historico') carregarHistorico();
+  if (nome === 'stats') carregarEstatisticas();
+  if (nome === 'config') carregarConfig();
+}
+
+// ── Painel ────────────────────────────────────────────────────────────────────
+async function carregarPainel() {
+  const data = await fetch('/api/painel').then(r => r.json());
+
+  const d = new Date(data.data + 'T12:00:00');
+  document.getElementById('header-data').textContent =
+    d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+
+  document.getElementById('count-sim').textContent = data.confirmados.length;
+  document.getElementById('count-nao').textContent = data.ausentes.length;
+  document.getElementById('count-esp').textContent = data.aguardando.length;
+
+  let html = '';
+
+  if (data.confirmados.length) {
+    html += '<div class="section-title">✅ Confirmados</div><div class="member-list">';
+    data.confirmados.forEach(m => {
+      html += `<div class="member-item">
+        <div class="member-dot dot-verde"></div>
+        <div><div class="member-nome">${m.nome}</div><div class="member-tel">${m.telefone}</div></div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (data.ausentes.length) {
+    html += '<div class="section-title">❌ Não vão hoje</div><div class="member-list">';
+    data.ausentes.forEach(m => {
+      html += `<div class="member-item">
+        <div class="member-dot dot-vermelho"></div>
+        <div><div class="member-nome">${m.nome}</div><div class="member-tel">${m.telefone}</div></div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (data.aguardando.length) {
+    html += '<div class="section-title">⏳ Aguardando resposta</div><div class="member-list">';
+    data.aguardando.forEach(m => {
+      html += `<div class="member-item">
+        <div class="member-dot dot-cinza"></div>
+        <div><div class="member-nome">${m.nome}</div><div class="member-tel">${m.telefone}</div></div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  if (!html) html = '<div class="empty">Nenhuma resposta ainda. Dispare o pré-culto para começar!</div>';
+
+  document.getElementById('listas-painel').innerHTML = html;
+}
+
+// ── Disparos ──────────────────────────────────────────────────────────────────
+async function disparar(tipo) {
+  if (!confirm(`Confirma o disparo ${tipo === 'pre' ? 'do pré-culto' : 'do fim do culto'}?`)) return;
+  const r = await fetch(`/api/disparar/${tipo}`, { method: 'POST' }).then(r => r.json());
+  toast(r.msg);
+  setTimeout(carregarPainel, 3000);
+}
+
+// ── Membros ───────────────────────────────────────────────────────────────────
+async function carregarMembros() {
+  const membros = await fetch('/api/membros').then(r => r.json());
+  const el = document.getElementById('lista-membros');
+
+  if (!membros.length) {
+    el.innerHTML = '<div class="empty">Nenhum membro cadastrado ainda.</div>';
+    return;
+  }
+
+  el.innerHTML = membros.map(m => `
+    <div class="member-item">
+      <div class="member-dot dot-verde"></div>
+      <div>
+        <div class="member-nome">${m.nome}</div>
+        <div class="member-tel">${m.telefone}${m.nascimento ? ' · ' + formatarData(m.nascimento) : ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addMembro() {
+  const nome = document.getElementById('m-nome').value.trim();
+  const telefone = document.getElementById('m-tel').value.trim();
+  const nascimento = document.getElementById('m-nasc').value;
+
+  if (!nome || !telefone) { toast('Preencha nome e telefone.'); return; }
+
+  const r = await fetch('/api/membros', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome, telefone, nascimento })
+  }).then(r => r.json());
+
+  toast(r.msg);
+  if (r.ok) {
+    document.getElementById('m-nome').value = '';
+    document.getElementById('m-tel').value = '';
+    document.getElementById('m-nasc').value = '';
+    carregarMembros();
+  }
+}
+
+// ── Config ────────────────────────────────────────────────────────────────────
+async function carregarConfig() {
+  const cfg = await fetch('/api/config').then(r => r.json());
+
+  document.getElementById('cfg-pre').value = cfg.horario_pre_culto || '19:00';
+  document.getElementById('cfg-fim').value = cfg.horario_fim_culto || '21:00';
+  document.getElementById('cfg-yt').value = cfg.youtube_channel || '';
+  document.getElementById('cfg-msg-pre').value = cfg.msg_pre_culto || '';
+  document.getElementById('cfg-msg-bv').value = cfg.msg_boas_vindas || '';
+  document.getElementById('cfg-msg-aus-pre').value = cfg.msg_ausente_pre || '';
+  document.getElementById('cfg-msg-ate').value = cfg.msg_ate_amanha || '';
+  document.getElementById('cfg-msg-aus-fim').value = cfg.msg_ausente_fim || '';
+
+  // Dias
+  const dias = (cfg.dias_culto || '').split(',').map(d => d.trim());
+  document.querySelectorAll('.dia-btn').forEach(btn => {
+    btn.classList.toggle('ativo', dias.includes(btn.dataset.dia));
+  });
+}
+
+function toggleDia(btn) {
+  btn.classList.toggle('ativo');
+}
+
+async function salvarConfig() {
+  const dias = [...document.querySelectorAll('.dia-btn.ativo')]
+    .map(b => b.dataset.dia).join(',');
+
+  const payload = {
+    horario_pre_culto: document.getElementById('cfg-pre').value,
+    horario_fim_culto: document.getElementById('cfg-fim').value,
+    youtube_channel: document.getElementById('cfg-yt').value,
+    dias_culto: dias,
+    msg_pre_culto: document.getElementById('cfg-msg-pre').value,
+    msg_boas_vindas: document.getElementById('cfg-msg-bv').value,
+    msg_ausente_pre: document.getElementById('cfg-msg-aus-pre').value,
+    msg_ate_amanha: document.getElementById('cfg-msg-ate').value,
+    msg_ausente_fim: document.getElementById('cfg-msg-aus-fim').value,
+  };
+
+  const r = await fetch('/api/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(r => r.json());
+
+  toast(r.ok ? '✅ Configurações salvas!' : '❌ Erro ao salvar.');
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function formatarData(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
+// ── Histórico ─────────────────────────────────────────────────────────────────
+async function carregarHistorico() {
+  const inicio = document.getElementById('hist-inicio').value;
+  const fim = document.getElementById('hist-fim').value;
+
+  let url = '/api/historico';
+  if (inicio && fim) url += `?inicio=${inicio}&fim=${fim}`;
+
+  const data = await fetch(url).then(r => r.json());
+  const el = document.getElementById('lista-historico');
+  const dias = data.dias;
+
+  const datasOrdenadas = Object.keys(dias).sort().reverse();
+  if (!datasOrdenadas.length) {
+    el.innerHTML = '<div class="empty">Nenhum registro encontrado no período.</div>';
+    return;
+  }
+
+  let html = '';
+  datasOrdenadas.forEach(d => {
+    const membros = dias[d];
+    const presentes = membros.filter(m => m.resposta === 'sim').length;
+    const ausentes = membros.filter(m => m.resposta === 'nao').length;
+    const dt = new Date(d + 'T12:00:00');
+    const label = dt.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+
+    html += `<div class="dia-historico">`;
+    html += `<div class="dia-historico-header">
+      <span>📅 ${label}</span>
+      <span>
+        <span class="badge badge-verde">✅ ${presentes}</span>
+        <span class="badge badge-vermelho">❌ ${ausentes}</span>
+      </span>
+    </div>`;
+    html += '<div class="member-list">';
+    membros.forEach(m => {
+      const dot = m.resposta === 'sim' ? 'dot-verde' : 'dot-vermelho';
+      const icon = m.resposta === 'sim' ? '✅' : '❌';
+      html += `<div class="member-item">
+        <div class="member-dot ${dot}"></div>
+        <div><div class="member-nome">${m.nome}</div><div class="member-tel">${m.telefone}</div></div>
+      </div>`;
+    });
+    html += '</div></div>';
+  });
+
+  el.innerHTML = html;
+}
+
+// ── Estatísticas ──────────────────────────────────────────────────────────────
+async function carregarEstatisticas() {
+  const data = await fetch('/api/estatisticas').then(r => r.json());
+
+  document.getElementById('st-cultos').textContent = data.total_cultos;
+  document.getElementById('st-membros').textContent = data.total_membros;
+  document.getElementById('st-media').textContent = data.media_presenca;
+
+  // Ranking
+  const rankEl = document.getElementById('lista-ranking');
+  if (data.ranking.length) {
+    const maxPresencas = Math.max(...data.ranking.map(r => r.presencas)) || 1;
+    rankEl.innerHTML = data.ranking.map((r, i) => {
+      const pct = Math.round((r.presencas / maxPresencas) * 100);
+      const total = r.total_respostas || 1;
+      const freqPct = Math.round((r.presencas / total) * 100);
+      return `<div class="ranking-item">
+        <div class="ranking-pos">${i + 1}º</div>
+        <div class="ranking-info">
+          <div class="member-nome">${r.nome}</div>
+          <div class="ranking-bar"><div class="ranking-fill" style="width:${pct}%"></div></div>
+        </div>
+        <div class="ranking-count">${r.presencas} presenças (${freqPct}%)</div>
+      </div>`;
+    }).join('');
+  } else {
+    rankEl.innerHTML = '<div class="empty">Sem dados de presença ainda.</div>';
+  }
+
+  // Gráfico
+  desenharGrafico(data.presenca_por_dia);
+}
+
+function desenharGrafico(dados) {
+  const canvas = document.getElementById('chart');
+  const ctx = canvas.getContext('2d');
+
+  // Ajustar resolução
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width - 40;
+  canvas.height = 200;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const pad = { top: 20, right: 20, bottom: 40, left: 40 };
+
+  ctx.clearRect(0, 0, w, h);
+
+  if (!dados.length) {
+    ctx.fillStyle = '#888';
+    ctx.font = '14px Segoe UI';
+    ctx.textAlign = 'center';
+    ctx.fillText('Sem dados para exibir', w / 2, h / 2);
+    return;
+  }
+
+  // Ordenar cronologicamente
+  dados = [...dados].reverse();
+
+  const maxVal = Math.max(...dados.map(d => d.presentes + d.ausentes)) || 1;
+  const chartW = w - pad.left - pad.right;
+  const chartH = h - pad.top - pad.bottom;
+  const barW = Math.max(8, Math.min(30, chartW / dados.length - 4));
+
+  // Grid lines
+  ctx.strokeStyle = '#e8e8e8';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (chartH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(w - pad.right, y);
+    ctx.stroke();
+    ctx.fillStyle = '#888';
+    ctx.font = '11px Segoe UI';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(maxVal - (maxVal / 4) * i), pad.left - 6, y + 4);
+  }
+
+  dados.forEach((d, i) => {
+    const x = pad.left + (chartW / dados.length) * i + (chartW / dados.length - barW) / 2;
+
+    // Barra presentes (verde)
+    const hP = (d.presentes / maxVal) * chartH;
+    ctx.fillStyle = '#1a6b3a';
+    ctx.beginPath();
+    ctx.roundRect(x, pad.top + chartH - hP, barW, hP, [3, 3, 0, 0]);
+    ctx.fill();
+
+    // Barra ausentes (vermelho, empilhada)
+    const hA = (d.ausentes / maxVal) * chartH;
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.roundRect(x, pad.top + chartH - hP - hA, barW, hA, [3, 3, 0, 0]);
+    ctx.fill();
+
+    // Label data
+    if (dados.length <= 15 || i % Math.ceil(dados.length / 10) === 0) {
+      const dt = new Date(d.data + 'T12:00:00');
+      const label = `${dt.getDate()}/${dt.getMonth() + 1}`;
+      ctx.fillStyle = '#888';
+      ctx.font = '10px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText(label, x + barW / 2, h - pad.bottom + 16);
+    }
+  });
+
+  // Legenda
+  ctx.font = '11px Segoe UI';
+  ctx.fillStyle = '#1a6b3a';
+  ctx.fillRect(w - 160, 6, 10, 10);
+  ctx.fillText('Presentes', w - 145, 15);
+  ctx.fillStyle = '#e74c3c';
+  ctx.fillRect(w - 80, 6, 10, 10);
+  ctx.fillText('Ausentes', w - 65, 15);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+// Preencher datas padrão do histórico
+(function() {
+  const hoje = new Date();
+  const mes = new Date(hoje);
+  mes.setDate(mes.getDate() - 30);
+  document.getElementById('hist-fim').value = hoje.toISOString().split('T')[0];
+  document.getElementById('hist-inicio').value = mes.toISOString().split('T')[0];
+})();
+
+carregarPainel();
+setInterval(carregarPainel, 30000); // auto-refresh a cada 30s
+</script>
+</body>
+</html>
