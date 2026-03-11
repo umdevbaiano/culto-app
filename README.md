@@ -1,4 +1,4 @@
-# 🙏 Sistema de Gestão de Culto
+# Sistema de Gestão de Culto
 
 Automação completa de comunicação com membros via WhatsApp, com painel administrativo, histórico de presenças e estatísticas.
 
