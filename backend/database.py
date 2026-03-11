@@ -96,6 +96,37 @@ def buscar_membro_por_telefone(telefone):
     conn.close()
     return dict(row) if row else None
 
+def atualizar_membro(membro_id, nome, telefone, nascimento, ativo):
+    conn = get_conn()
+    try:
+        # Se for atualizar o telefone, vai falhar por UNIQUE se já existir em outro ID
+        conn.execute('''
+            UPDATE membros 
+            SET nome = ?, telefone = ?, nascimento = ?, ativo = ? 
+            WHERE id = ?
+        ''', (nome, telefone, nascimento, 1 if ativo else 0, membro_id))
+        conn.commit()
+        return True, 'Membro atualizado com sucesso!'
+    except sqlite3.IntegrityError:
+        return False, 'O novo telefone já pertence a outro membro.'
+    finally:
+        conn.close()
+
+def deletar_membro(membro_id):
+    conn = get_conn()
+    try:
+        # Excluir histórico de respostas para não deixar órfãos, 
+        # caso não esteja usando ON DELETE CASCADE na tabela:
+        conn.execute('DELETE FROM respostas WHERE membro_id = ?', (membro_id,))
+        # Excluir o membro propriamente dito
+        conn.execute('DELETE FROM membros WHERE id = ?', (membro_id,))
+        conn.commit()
+        return True, 'Membro e seu histórico foram removidos com sucesso!'
+    except Exception as e:
+        return False, f'Erro ao deletar: {e}'
+    finally:
+        conn.close()
+
 # ── Respostas ─────────────────────────────────────────────────────────────────
 
 def registrar_resposta(membro_id, data, resposta):

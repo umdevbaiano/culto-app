@@ -261,6 +261,21 @@
       white-space: nowrap;
     }
 
+    /* ── Modal ── */
+    .modal-backdrop {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 999;
+      display: none; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .modal {
+      background: white; border-radius: 12px; padding: 24px;
+      width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .modal h3 { font-size: 18px; color: var(--blue); margin-bottom: 16px; font-weight: 700; }
+    .modal-actions { display: flex; gap: 12px; margin-top: 24px; }
+    .modal-actions .btn { flex: 1; }
+
     /* ── Membros tab ── */
     .add-member-form {
       background: white;
@@ -588,6 +603,34 @@
 
 </div>
 
+<!-- Modal Edição Membro -->
+<div class="modal-backdrop" id="modal-edicao">
+  <div class="modal">
+    <h3>✏️ Editar Membro</h3>
+    <input type="hidden" id="edit-id">
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="edit-nome">
+    </div>
+    <div class="form-group">
+      <label>WhatsApp</label>
+      <input type="tel" id="edit-tel">
+    </div>
+    <div class="form-group">
+      <label>Nascimento (opcional)</label>
+      <input type="date" id="edit-nasc">
+    </div>
+    <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+      <input type="checkbox" id="edit-ativo" style="width: 16px; height: 16px;">
+      <label for="edit-ativo" style="margin: 0; font-size: 14px; text-transform: none;">Ativo (Recebe mensagens)</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicaoMembro()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -674,6 +717,8 @@ async function carregarMembros() {
   const membros = await fetch('/api/membros').then(r => r.json());
   const el = document.getElementById('lista-membros');
 
+  window._membrosCache = membros; // guarda na memoria pra facilitar ediçao
+
   if (!membros.length) {
     el.innerHTML = '<div class="empty">Nenhum membro cadastrado ainda.</div>';
     return;
@@ -682,9 +727,13 @@ async function carregarMembros() {
   el.innerHTML = membros.map(m => `
     <div class="member-item">
       <div class="member-dot dot-verde"></div>
-      <div>
+      <div style="flex: 1; min-width: 0;">
         <div class="member-nome">${m.nome}</div>
         <div class="member-tel">${m.telefone}${m.nascimento ? ' · ' + formatarData(m.nascimento) : ''}</div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-outline" style="padding: 6px 10px; font-size: 12px; font-weight: 600;" onclick="abrirEdicao(${m.id})">Editar</button>
+        <button class="btn btn-danger" style="padding: 6px 10px; font-size: 12px; font-weight: 600;" onclick="excluirMembro(${m.id}, '${m.nome}')">Excluir</button>
       </div>
     </div>
   `).join('');
@@ -710,6 +759,57 @@ async function addMembro() {
     document.getElementById('m-nasc').value = '';
     carregarMembros();
   }
+}
+
+// ── Edição e Exclusão ──
+function abrirEdicao(id) {
+  const membro = window._membrosCache.find(m => m.id === id);
+  if (!membro) return;
+
+  document.getElementById('edit-id').value = membro.id;
+  document.getElementById('edit-nome').value = membro.nome;
+  document.getElementById('edit-tel').value = membro.telefone;
+  document.getElementById('edit-nasc').value = membro.nascimento || '';
+  document.getElementById('edit-ativo').checked = membro.ativo === 1;
+
+  document.getElementById('modal-edicao').style.display = 'flex';
+}
+
+function fecharModal() {
+  document.getElementById('modal-edicao').style.display = 'none';
+}
+
+async function salvarEdicaoMembro() {
+  const id = document.getElementById('edit-id').value;
+  const payload = {
+    nome: document.getElementById('edit-nome').value.trim(),
+    telefone: document.getElementById('edit-tel').value.trim(),
+    nascimento: document.getElementById('edit-nasc').value || null,
+    ativo: document.getElementById('edit-ativo').checked
+  };
+
+  if (!payload.nome || !payload.telefone) { toast('Nome e telefone obrigatórios.'); return; }
+
+  const r = await fetch(`/api/membros/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(r => r.json());
+
+  toast(r.msg);
+  if (r.ok) {
+    fecharModal();
+    carregarMembros();
+  }
+}
+
+async function excluirMembro(id, nome) {
+  if (!confirm(`Tem certeza que deseja excluir permanentemente o membro "${nome}"?\n\nIsso também apagará todo o histórico de presenças dele.`)) return;
+  
+  const r = await fetch(`/api/membros/${id}`, { method: 'DELETE' }).then(r => r.json());
+  
+  toast(r.msg);
+  if (r.ok) carregarMembros();
 }
 
 // ── Config ────────────────────────────────────────────────────────────────────

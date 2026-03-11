@@ -198,6 +198,27 @@ def add_membro():
     ok, msg = db.cadastrar_membro(nome, telefone, nascimento)
     return jsonify({'ok': ok, 'msg': msg})
 
+@app.route('/api/membros/<int:membro_id>', methods=['PUT'])
+@rate_limit(10, 60)
+def edt_membro(membro_id):
+    data = request.json or {}
+    nome = (data.get('nome') or '').strip()
+    telefone = (data.get('telefone') or '').strip()
+    nascimento = (data.get('nascimento') or '').strip() or None
+    ativo = data.get('ativo', True)
+    
+    if not nome or not telefone:
+        return jsonify({'ok': False, 'msg': 'Nome e telefone obrigatórios.'}), 400
+    
+    ok, msg = db.atualizar_membro(membro_id, nome, telefone, nascimento, ativo)
+    return jsonify({'ok': ok, 'msg': msg})
+
+@app.route('/api/membros/<int:membro_id>', methods=['DELETE'])
+@rate_limit(10, 60)
+def del_membro(membro_id):
+    ok, msg = db.deletar_membro(membro_id)
+    return jsonify({'ok': ok, 'msg': msg})
+
 @app.route('/api/config')
 @rate_limit(30, 60)
 def get_config():
