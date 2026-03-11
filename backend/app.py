@@ -281,6 +281,108 @@ def disparar_fim():
     t.Thread(target=scheduler.disparar_fim_culto, daemon=True).start()
     return jsonify({'ok': True, 'msg': 'Mensagem de fim sendo disparada...'})
 
+# ── API: Avisos Gerais (Mural/Broadcast) ──────────────────────────────────────
+@app.route('/api/avisos', methods=['POST'])
+@rate_limit(5, 60) # max 5 disparos por min
+def broadcast_aviso():
+    data = request.json or {}
+    texto = (data.get('texto') or '').strip()
+    media_base64 = data.get('media_base64') # pode ser null
+    media_type = data.get('media_type', 'image')
+    file_name = data.get('file_name', 'arquivo.png')
+
+    if not texto and not media_base64:
+        return jsonify({'ok': False, 'msg': 'O aviso precisa ter texto ou anexo.'}), 400
+
+    # Pega todos os membros ativos
+    membros = db.listar_membros(apenas_ativos=True)
+    if not membros:
+        return jsonify({'ok': False, 'msg': 'Não há membros ativos para receber o aviso.'})
+
+    def _worker_aviso(membros_list, txt, b64, mtype, fname):
+        import time
+        print(f'[AVISOS] 🚀 Iniciando disparo para {len(membros_list)} membros.')
+        for m in membros_list:
+            if b64:
+                wa.enviar_midia(m['telefone'], txt, b64, media_type=mtype, file_name=fname)
+            else:
+                wa.enviar_mensagem(m['telefone'], txt)
+            time.sleep(1) # evita flood
+        print('[AVISOS] ✅ Disparo concluído.')
+
+    import threading as t
+    t.Thread(target=_worker_aviso, args=(membros, texto, media_base64, media_type, file_name), daemon=True).start()
+
+    return jsonify({'ok': True, 'msg': f'Aviso está sendo disparado para {len(membros)} membros!'})
+
+# ── API: Importar / Exportar Membros ──────────────────────────────────────────
+@app.route('/api/membros/export', methods=['GET'])
+@rate_limit(10, 60)
+def export_membros():
+    import csv, io
+    from flask import Response
+    
+    membros = db.listar_membros(apenas_ativos=False)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    writer.writerow(['ID', 'Nome', 'WhatsApp', 'Nascimento', 'Ativo', 'CriadoEm'])
+    for m in membros:
+        writer.writerow([m['id'], m['nome'], m['telefone'], m['nascimento'] or '', m['ativo'], m['criado_em']])
+    
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename=membros_culto_{date.today().isoformat()}.csv'}
+    )
+
+@app.route('/api/membros/import', methods=['POST'])
+@rate_limit(5, 60)
+def import_membros():
+    if 'file' not in request.files:
+        return jsonify({'ok': False, 'msg': 'Nenhum arquivo enviado.'}), 400
+        
+    file = request.files['file']
+    if not file.filename.endswith('.csv'):
+        return jsonify({'ok': False, 'msg': 'O arquivo precisa ser .csv.'}), 400
+
+    import csv, io
+    stream = io.StringIO(file.stream.read().decode('utf-8'))
+    reader = csv.reader(stream)
+    
+    header = next(reader, None) # pula o cabecalho
+    adicionados = 0
+    ignorados = 0
+    
+    for row in reader:
+        if len(row) < 3: continue
+        # Assumindo formato do export (ID, Nome, Telefone, Nasc...) 
+        # ou import manual mais curto (Nome, Telefone)
+        
+        if len(row) >= 6 and row[0].isdigit():
+            # Formato do próprio sistema gerado pelo /export (ID, Nome, Tel, Nasc...)
+            nome = row[1].strip()
+            telefone = row[2].strip()
+            nascimento = row[3].strip() or None
+        else:
+            # Formato solto (Nome, Telefone, ...)
+            nome = row[0].strip()
+            telefone = row[1].strip()
+            nascimento = row[2].strip() if len(row) > 2 else None
+            
+        if not nome or not telefone:
+            ignorados += 1
+            continue
+            
+        ok, _msg = db.cadastrar_membro(nome, telefone, nascimento)
+        if ok: adicionados += 1
+        else: ignorados += 1
+
+    return jsonify({
+        'ok': True, 
+        'msg': f'Importação concluída: {adicionados} membros novos inseridos. ({ignorados} ignorados/duplicados).'
+    })
+
 # ── Inicialização ─────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     db.init_db()

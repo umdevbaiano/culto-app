@@ -47,17 +47,71 @@ def enviar_mensagem(telefone, mensagem):
 
 def enviar_lista_interativa(telefone, titulo, corpo, botoes):
     """
-    Simula envio de lista interativa enviando um menu de texto simples,
-    pois os botões nativos não são mais suportados na versão Baileys (QR Code).
+    Envia uma Enquete (Poll) interativa pelo WhatsApp,
+    usando os botões como opções clicáveis.
     """
     numero = _formatar_numero(telefone)
+    url = f'{EVOLUTION_URL}/message/sendPoll/{EVOLUTION_INSTANCE}'
     
-    # Fallback obrigatório: envia texto simples com instruções
-    print(f'[WA] ⚠️ Acionando fallback de botões para {numero}.', flush=True)
+    # Extrai só os títulos para criar as opções da enquete
+    opcoes = [b['title'] for b in botoes]
     
-    # Removido o envio do sendButtons pois a API Baileys da v1.8.2 recusa.
-    # Formatando a lista de botões como opções de texto
-    opcoes_texto = "\n".join([f"*{i+1}* - {b['title']}" for i, b in enumerate(botoes)])
-    msg_fallback = f'{titulo}\n\n{corpo}\n\nResponda:\n{opcoes_texto}'
+    payload = {
+        'number': numero,
+        'options': {
+            'delay': 1200,
+            'presence': 'composing'
+        },
+        'pollMessage': {
+            'name': f'{titulo}\n\n{corpo}',
+            'options': opcoes,
+            'selectableCount': 1
+        }
+    }
     
-    return enviar_mensagem(telefone, msg_fallback)
+    try:
+        resp = requests.post(url, json=payload, headers=_headers(), timeout=10)
+        resp.raise_for_status()
+        print(f'[WA] ✅ Enquete enviada para {numero}', flush=True)
+        return True
+    except Exception as e:
+        print(f'[WA] ❌ Erro ao enviar enquete para {numero}: {e}', flush=True)
+        if hasattr(e, 'response') and e.response is not None:
+            print(f'[WA] Detalhes do erro: {e.response.text}', flush=True)
+        
+        # Fallback de sobrevivência (Texto simples)
+        fallback = "\n".join([f"*{i+1}* - {b['title']}" for i, b in enumerate(botoes)])
+        return enviar_mensagem(telefone, f'{titulo}\n\n{corpo}\n\nResponda:\n{fallback}')
+
+def enviar_midia(telefone, mensagem, base64_media, media_type='image', file_name='arquivo.png'):
+    """
+    Envia mídia (imagem, pdf, etc) via base64.
+    media_type: 'image', 'document', 'audio', 'video'
+    """
+    numero = _formatar_numero(telefone)
+    url = f'{EVOLUTION_URL}/message/sendMedia/{EVOLUTION_INSTANCE}'
+    
+    payload = {
+        'number': numero,
+        'options': {
+            'delay': 2000,
+            'presence': 'composing'
+        },
+        'mediaMessage': {
+            'mediatype': media_type,
+            'fileName': file_name,
+            'caption': mensagem,
+            'media': base64_media
+        }
+    }
+    
+    try:
+        resp = requests.post(url, json=payload, headers=_headers(), timeout=20)
+        resp.raise_for_status()
+        print(f'[WA] ✅ Mídia enviada para {numero}', flush=True)
+        return True
+    except Exception as e:
+        print(f'[WA] ❌ Erro ao enviar mídia para {numero}: {e}', flush=True)
+        if hasattr(e, 'response') and e.response is not None:
+            print(f'[WA] Detalhes do erro: {e.response.text}', flush=True)
+        return False
