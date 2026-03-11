@@ -122,10 +122,17 @@ def webhook():
         if key.get('fromMe'):
             return jsonify({'ok': True})
 
+        # Extrai o número do telefone
         telefone_raw = key.get('remoteJid', '').replace('@s.whatsapp.net', '')
-        texto = (msg_data.get('message', {}).get('conversation') or
-                 msg_data.get('message', {}).get('buttonsResponseMessage', {}).get('selectedButtonId') or
-                 '').strip().lower()
+        
+        # Converte TODO o payload da mensagem numa string em minúsculo pra buscar as intenções.
+        # Assim pegamos conversas normais, botões antigos E votos em Enquetes (Polls)
+        import json
+        payload_str = json.dumps(msg_data, ensure_ascii=False).lower()
+        
+        # Como Enquetes tem as opções "Estarei lá! 🙌" e "Não vou poder ir 😔",
+        # procuramos diretamente por termos chave no JSON inteiro:
+        texto = payload_str
 
         membro = db.buscar_membro_por_telefone(telefone_raw)
         if not membro:
@@ -135,15 +142,9 @@ def webhook():
         config = db.get_config()
         primeiro = membro['nome'].split()[0]
 
-        # Detecta resposta
-        confirmou = any(x in texto for x in ['1', 'sim', 'vou', 'estarei', 'lá', 'la', 'yes'])
-        negou = any(x in texto for x in ['2', 'nao', 'não', 'nã', 'no', 'poder'])
-
-        # Também aceita buttonId formato sim_ID_DATA
-        if texto.startswith('sim_'):
-            confirmou = True
-        elif texto.startswith('nao_'):
-            negou = True
+        # Detecta intenção de resposta em qualquer lugar do JSON recebido
+        confirmou = any(x in texto for x in ['"estarei lá', '"sim', 'estarei lá! 🙌', 'sim_'])
+        negou = any(x in texto for x in ['"não vou', '"nao vou', '"não', 'não vou poder ir 😔', 'nao_'])
 
         if confirmou:
             db.registrar_resposta(membro['id'], hoje, 'sim')
