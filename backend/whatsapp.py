@@ -22,40 +22,42 @@ def enviar_mensagem(telefone, mensagem):
     """Envia mensagem de texto via Evolution API."""
     numero = _formatar_numero(telefone)
     url = f'{EVOLUTION_URL}/message/sendText/{EVOLUTION_INSTANCE}'
+    
+    # Payload no formato Evolution API v1.8.2
     payload = {
         'number': numero,
-        'text': mensagem
+        'options': {
+            'delay': 1200,
+            'presence': 'composing'
+        },
+        'textMessage': {
+            'text': mensagem
+        }
     }
     try:
         resp = requests.post(url, json=payload, headers=_headers(), timeout=10)
         resp.raise_for_status()
-        print(f'[WA] ✅ Mensagem enviada para {numero}')
+        print(f'[WA] ✅ Mensagem enviada para {numero}', flush=True)
         return True
     except Exception as e:
-        print(f'[WA] ❌ Erro ao enviar para {numero}: {e}')
+        print(f'[WA] ❌ Erro ao enviar para {numero}: {e}', flush=True)
+        if hasattr(e, 'response') and e.response is not None:
+            print(f'[WA] Detalhes do erro: {e.response.text}', flush=True)
         return False
 
 def enviar_lista_interativa(telefone, titulo, corpo, botoes):
     """
-    Envia mensagem com botões de resposta rápida.
-    botoes = [{'id': 'sim', 'title': 'Estarei lá! 🙌'}, ...]
+    Simula envio de lista interativa enviando um menu de texto simples,
+    pois os botões nativos não são mais suportados na versão Baileys (QR Code).
     """
     numero = _formatar_numero(telefone)
-    url = f'{EVOLUTION_URL}/message/sendButtons/{EVOLUTION_INSTANCE}'
-    payload = {
-        'number': numero,
-        'title': titulo,
-        'description': corpo,
-        'buttons': [{'buttonId': b['id'], 'buttonText': {'displayText': b['title']}} for b in botoes],
-        'footerText': 'Igreja'
-    }
-    try:
-        resp = requests.post(url, json=payload, headers=_headers(), timeout=10)
-        resp.raise_for_status()
-        print(f'[WA] ✅ Botões enviados para {numero}')
-        return True
-    except Exception as e:
-        # Fallback: envia texto simples com instruções
-        print(f'[WA] ⚠️ Botões não suportados para {numero}, enviando texto.')
-        msg_fallback = f'{corpo}\n\nResponda:\n*1* - Estarei lá! 🙌\n*2* - Não vou poder ir 😔'
-        return enviar_mensagem(telefone, msg_fallback)
+    
+    # Fallback obrigatório: envia texto simples com instruções
+    print(f'[WA] ⚠️ Acionando fallback de botões para {numero}.', flush=True)
+    
+    # Removido o envio do sendButtons pois a API Baileys da v1.8.2 recusa.
+    # Formatando a lista de botões como opções de texto
+    opcoes_texto = "\n".join([f"*{i+1}* - {b['title']}" for i, b in enumerate(botoes)])
+    msg_fallback = f'{titulo}\n\n{corpo}\n\nResponda:\n{opcoes_texto}'
+    
+    return enviar_mensagem(telefone, msg_fallback)
